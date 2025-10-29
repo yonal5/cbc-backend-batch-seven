@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import productRouter from "./routes/productRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
-import orderRouter from "./routes/orderRouter.js";
+import orderRouter from "./routes/orderRoute.js";
 
 
 dotenv.config();
