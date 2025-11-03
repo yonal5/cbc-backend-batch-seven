@@ -1,18 +1,30 @@
 import express from 'express';
-import { blockOrUnblockUser, changePasswordViaOTP, createUser, getAllUsers, getUser, googleLogin, loginUser, sendOTP, updatePassword, updateUserData } from '../controllers/userController.js';
-
+import { 
+    blockOrUnblockUser, 
+    changePasswordViaOTP, 
+    createUser, 
+    getAllUsers, 
+    getUser, 
+    googleLogin, 
+    loginUser, 
+    sendOTP, 
+    updateUser // ✅ import this
+} from '../controllers/userController.js';
+import { authMiddleware } from '../middleware/auth.js'; // ✅ import authMiddleware
 
 const userRouter = express.Router();
 
-userRouter.post("/",createUser)
-userRouter.post("/login",loginUser)
-userRouter.get("/me",getUser)
-userRouter.post("/google-login",googleLogin)
-userRouter.get("/all-users", getAllUsers)
-userRouter.put("/block/:email",blockOrUnblockUser)
-userRouter.get("/send-otp/:email",sendOTP)
-userRouter.post("/change-password/",changePasswordViaOTP)
-userRouter.put("/me",updateUserData)
-userRouter.put("/me/password",updatePassword)
+// Public routes
+userRouter.post("/", createUser);
+userRouter.post("/login", loginUser);
+userRouter.post("/google-login", googleLogin);
+userRouter.post("/change-password/", changePasswordViaOTP);
+userRouter.get("/send-otp/:email", sendOTP);
+
+// Protected routes (require authMiddleware)
+userRouter.get("/me", authMiddleware, getUser);
+userRouter.put("/me", authMiddleware, updateUser); // ✅ profile update
+userRouter.get("/all-users", authMiddleware, getAllUsers);
+userRouter.put("/block/:email", authMiddleware, blockOrUnblockUser);
 
 export default userRouter;
