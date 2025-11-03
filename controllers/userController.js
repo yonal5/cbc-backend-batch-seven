@@ -1,3 +1,4 @@
+
 import axios from "axios";
 import User from "../models/user.js";
 import bcrypt from "bcrypt";
@@ -105,6 +106,36 @@ export function isAdmin(req) {
 	}
 
 	return true;
+}
+export async function updateUser(req, res) {
+    if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { firstName, lastName, image } = req.body;
+
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id, // or req.user.id depending on your JWT payload
+            { firstName, lastName, image },
+            { new: true }
+        );
+
+        res.json({
+            message: "Profile updated successfully",
+            user: {
+                email: updatedUser.email,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                role: updatedUser.role,
+                isEmailVerified: updatedUser.isEmailVerified,
+                image: updatedUser.image,
+            },
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Failed to update profile" });
+    }
 }
 
 export function isCustomer(req) {
@@ -384,58 +415,6 @@ export async function changePasswordViaOTP(req, res) {
 	} catch (err) {
 		res.status(500).json({
 			message: "Failed to change password",
-		});
-	}
-}
-
-export async function updateUserData(req, res) {
-	if (req.user == null) {
-		res.status(401).json({
-			message: "Unauthorized",
-		});
-		return;
-	}
-
-	try{
-
-		await User.updateOne({
-			email: req.user.email
-		},{
-			firstName: req.body.firstName,
-			lastName: req.body.lastName,
-			image: req.body.image
-		})
-		res.json({
-			message: "User data updated successfully",
-		});
-	}catch(err){
-		res.status(500).json({
-			message: "Failed to update user data",
-		});
-	}
-}
-
-export async function updatePassword(req, res) {
-	if (req.user == null) {
-		res.status(401).json({
-			message: "Unauthorized",
-		});
-		return;
-	}
-	try{
-		const hashedPassword = bcrypt.hashSync(req.body.password, 10);
-		await User.updateOne({
-			email: req.user.email
-		},{
-			password: hashedPassword
-		})
-		res.json({
-			message: "Password updated successfully",
-		});
-	}
-	catch(err){
-		res.status(500).json({
-			message: "Failed to update password",
 		});
 	}
 }
