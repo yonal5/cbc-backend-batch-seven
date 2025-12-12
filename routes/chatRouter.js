@@ -1,30 +1,18 @@
 import express from "express";
-import Chat from "../models/chatModel.js";
+import {
+  sendMessage,
+  getMessages,
+  adminSend,
+  adminGetAllMessages,
+  listCustomers,
+} from "../controllers/chatController.js";
 
 const router = express.Router();
 
-// Get all chat messages
-router.get("/", async (req, res) => {
-  try {
-    const messages = await Chat.find().sort({ time: 1 });
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Send a message (customer or admin)
-router.post("/", async (req, res) => {
-  try {
-    const { sender, name, message } = req.body;
-
-    const newMsg = new Chat({ sender, name, message });
-    await newMsg.save();
-
-    res.status(201).json(newMsg);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.post("/", sendMessage);          // Customer sends
+router.get("/", getMessages);           // Customer loads
+router.get("/admin", adminGetAllMessages); // Admin loads ALL messages
+router.get("/customers", listCustomers);   // Admin list customers
+router.post("/admin/send", adminSend);     // Admin send to customer
 
 export default router;
