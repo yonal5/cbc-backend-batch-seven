@@ -24,6 +24,7 @@ export const sendMessage = async (req, res) => {
   }
 };
 
+
 // ---------------------------------------------
 // CUSTOMER GETS ONLY THEIR MESSAGES
 // ---------------------------------------------
