@@ -1,13 +1,14 @@
 import express from "express";
 import {
-  blockOrUnblockUser,
-  updateMyPassword,
+  changePasswordViaOTP,
   createUser,
   getAllUsers,
   getUser,
+  updatePassword,
+  blockOrUnblockUser,
   googleLogin,
   sendOTP,
-  updateUser,
+  updateUserData,
 } from "../controllers/userController.js";
 
 import { authenticate } from "../middleware/auth.js";
@@ -54,14 +55,11 @@ userRouter.get("/send-otp/:email", sendOTP);
 
 // -------------------- PROTECTED ROUTES --------------------
 userRouter.get("/me", authenticate, getUser);
-userRouter.put("/me", authenticate, updateUser);
+userRouter.put("/me", authenticate, updateUserData);
 
 // ✅ PASSWORD UPDATE (THIS IS THE ONE YOU NEED)
-userRouter.put("/me/password", authenticate, updateMyPassword);
-
-userRouter.get("/__debug", (req, res) => {
-  res.json({ router: "userRouter loaded" });
-});
+userRouter.post("/change-password/",authenticate,changePasswordViaOTP)
+userRouter.put("/me/password" ,authenticate,updatePassword)
 
 
 userRouter.get("/all-users", authenticate, getAllUsers);
