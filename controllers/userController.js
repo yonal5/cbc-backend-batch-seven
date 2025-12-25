@@ -21,15 +21,35 @@ const transporter = nodemailer.createTransport({
 	},
 });
 
-export function createUser(req, res) {
-	const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+export const createUser = async (req, res) => {
+  try {
+    const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+
+    const user = new User({
+      email: req.body.email,
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      password: hashedPassword,
+    });
+
+    await user.save();
+    res.json({ message: "User created successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to create user" });
+  }
+};
+export function createUserOld(req, res) {
+	const { firstName, lastName, email, password } = req.body;
+
+	const hashedPassword = bcrypt.hashSync(password, 10);
 
 	const user = new User({
-		email: req.body.email,
-		firstName: req.body.firstName,
-		lastName: req.body.lastName,
+		firstName,
+		lastName,
+		email,
 		password: hashedPassword,
-	});
+	});	
 
 	user
 		.save()
@@ -45,57 +65,55 @@ export function createUser(req, res) {
 		});
 }
 
-export function loginUser(req, res) {
-	User.findOne({
-		email: req.body.email,
-	}).then((user) => {
-		if (user == null) {
-			res.status(404).json({
-				message: "User not found",
-			});
-		} else {
-			if (user.isBlock) {
-				res.status(403).json({
-					message: "Your account has been blocked. Please contact admin.",
-				});
-				return;
-			}
-			const isPasswordMatching = bcrypt.compareSync(
-				req.body.password,
-				user.password
-			);
-			if (isPasswordMatching) {
-				const token = jwt.sign(
-					{
-						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						role: user.role,
-						isEmailVerified: user.isEmailVerified,
-						image: user.image,
-					},
-					process.env.JWT_SECRET
-				);
+export const loginUser = async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-				res.json({
-					message: "Login successful",
-					token: token,
-					user: {
-						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						role: user.role,
-						isEmailVerified: user.isEmailVerified,
-					},
-				});
-			} else {
-				res.status(500).json({
-					message: "Invalid password",
-				});
-			}
-		}
-	});
-}
+    if (user.isBlock)
+      return res
+        .status(403)
+        .json({ message: "Your account has been blocked. Contact admin." });
+
+    const isMatch = bcrypt.compareSync(req.body.password, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid password" });
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        image: user.image,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ---------------- GET USER ----------------
+export const getUser = (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+  res.json({
+    id: req.user._id,
+    firstName: req.user.firstName,
+    lastName: req.user.lastName,
+    email: req.user.email,
+    role: req.user.role,
+    image: req.user.image,
+  });
+};
 
 export function isAdmin(req) {
 	if (req.user == null) {
@@ -107,36 +125,34 @@ export function isAdmin(req) {
 
 	return true;
 }
-export async function updateUser(req, res) {
-    if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
+export const updateUser = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-    const { firstName, lastName, image } = req.body;
+  const { firstName, lastName, image } = req.body;
 
-    try {
-        const updatedUser = await User.findByIdAndUpdate(
-            req.user._id, // or req.user.id depending on your JWT payload
-            { firstName, lastName, image },
-            { new: true }
-        );
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { firstName, lastName, image },
+      { new: true }
+    );
 
-        res.json({
-            message: "Profile updated successfully",
-            user: {
-                email: updatedUser.email,
-                firstName: updatedUser.firstName,
-                lastName: updatedUser.lastName,
-                role: updatedUser.role,
-                isEmailVerified: updatedUser.isEmailVerified,
-                image: updatedUser.image,
-            },
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Failed to update profile" });
-    }
-}
+    res.json({
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser._id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        image: updatedUser.image,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+};
 
 export function isCustomer(req) {
 	if (req.user == null) {
@@ -147,17 +163,6 @@ export function isCustomer(req) {
 	}
 
 	return true;
-}
-
-export function getUser(req, res) {
-	if (req.user == null) {
-		res.status(401).json({
-			message: "Unauthorized",
-		});
-		return;
-	} else {
-		res.json(req.user);
-	}
 }
 
 export async function googleLogin(req, res) {
@@ -378,43 +383,26 @@ export async function sendOTP(req, res) {
 	}
 }
 
-export async function changePasswordViaOTP(req, res) {
-	const email = req.body.email;
-	const otp = req.body.otp;
-	const newPassword = req.body.newPassword;
-	try {
-		const otpRecord = await OTP.findOne({
-			email: email,
-			otp: otp,
-		});
+export const updateMyPassword = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-		if (otpRecord == null) {
-			res.status(400).json({
-				message: "Invalid OTP",
-			});
-			return;
-		}
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword)
+    return res
+      .status(400)
+      .json({ message: "Current and new password required" });
 
-		await OTP.deleteMany({
-			email: email,
-		});
+  try {
+    const isMatch = bcrypt.compareSync(currentPassword, req.user.password);
+    if (!isMatch) return res.status(400).json({ message: "Current password incorrect" });
 
-		const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    req.user.password = hashedPassword;
+    await req.user.save();
 
-		await User.updateOne(
-			{
-				email: email,
-			},
-			{
-				password: hashedPassword,
-			}
-		);
-		res.json({
-			message: "Password changed successfully",
-		});
-	} catch (err) {
-		res.status(500).json({
-			message: "Failed to change password",
-		});
-	}
-}
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update password" });
+  }
+};
