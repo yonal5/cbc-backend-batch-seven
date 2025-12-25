@@ -89,6 +89,13 @@ mongoose
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/chat", chatRouter);
+app.get("/__routes", (req, res) => {
+  res.json({
+    message: "Server entry file is updated",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 
 // Server
 const PORT = process.env.PORT || 5000;
