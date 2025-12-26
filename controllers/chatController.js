@@ -5,24 +5,26 @@ import Chat from "../models/chatModel.js";
 // ---------------------------------------------
 export const sendMessage = async (req, res) => {
   try {
-    const { customerName, guestId, message } = req.body;
+    const { customerName, userId, message } = req.body;
 
-    if (!customerName || !guestId || !message) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!message) {
+      return res.status(400).json({ message: "Message required" });
     }
 
     const chat = await Chat.create({
-      customerName,
-      guestId,
+      customerName: customerName || "Guest",
+      userId: userId || "guest_" + Date.now(),
       sender: "customer",
       message,
     });
 
     res.status(201).json(chat);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Failed to send" });
   }
 };
+
 
 
 // ---------------------------------------------
