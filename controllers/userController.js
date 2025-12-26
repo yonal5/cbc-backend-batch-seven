@@ -1,4 +1,3 @@
-
 import axios from "axios";
 import User from "../models/user.js";
 import bcrypt from "bcrypt";
@@ -30,31 +29,6 @@ export function createUser(req, res) {
 		lastName: req.body.lastName,
 		password: hashedPassword,
 	});
-
-	user
-		.save()
-		.then(() => {
-			res.json({
-				message: "User created successfully",
-			});
-		})
-		.catch(() => {
-			res.json({
-				message: "Failed to create user",
-			});
-		});
-}
-export function createUserOld(req, res) {
-	const { firstName, lastName, email, password } = req.body;
-
-	const hashedPassword = bcrypt.hashSync(password, 10);
-
-	const user = new User({
-		firstName,
-		lastName,
-		email,
-		password: hashedPassword,
-	});	
 
 	user
 		.save()
@@ -121,17 +95,6 @@ export function loginUser(req, res) {
 		}
 	});
 }
-// ---------------- GET USER ----------------
-export function getUser(req, res) {
-	if (req.user == null) {
-		res.status(401).json({
-			message: "Unauthorized",
-		});
-		return;
-	} else {
-		res.json(req.user);
-	}
-}
 
 export function isAdmin(req) {
 	if (req.user == null) {
@@ -155,6 +118,17 @@ export function isCustomer(req) {
 	return true;
 }
 
+export function getUser(req, res) {
+	
+	if (req.user == null) {
+		res.status(401).json({
+			message: "Unauthorized",
+		});
+		return;
+	} else {
+		res.json(req.user);
+	}
+}
 
 export async function googleLogin(req, res) {
 	const token = req.body.token;
@@ -274,6 +248,7 @@ export async function getAllUsers(req, res) {
 		});
 	}
 }
+
 export async function blockOrUnblockUser(req, res) {
 	console.log(req.user);
 	if (!isAdmin(req)) {
@@ -413,6 +388,7 @@ export async function changePasswordViaOTP(req, res) {
 		});
 	}
 }
+
 export async function updateUserData(req, res) {
 	if (req.user == null) {
 		res.status(401).json({
@@ -440,28 +416,35 @@ export async function updateUserData(req, res) {
 	}
 }
 
-
 export async function updatePassword(req, res) {
-	if (req.user == null) {
-		res.status(401).json({
-			message: "Unauthorized",
-		});
-		return;
+	if (!req.user) {
+		return res.status(401).json({ message: "Unauthorized" });
 	}
-	try{
-		const hashedPassword = bcrypt.hashSync(req.body.password, 10);
-		await User.updateOne({
-			email: req.user.email
-		},{
-			password: hashedPassword
-		})
-		res.json({
-			message: "Password updated successfully",
-		});
+
+	const { currentPassword, newPassword } = req.body;
+
+	if (!currentPassword || !newPassword) {
+		return res.status(400).json({ message: "Missing fields" });
 	}
-	catch(err){
-		res.status(500).json({
-			message: "Failed to update password",
-		});
+
+	try {
+		const user = await User.findOne({ email: req.user.email });
+
+		const isMatch = bcrypt.compareSync(currentPassword, user.password);
+		if (!isMatch) {
+			return res.status(400).json({ message: "Current password is incorrect" });
+		}
+
+		const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+		await User.updateOne(
+			{ email: req.user.email },
+			{ password: hashedPassword }
+		);
+
+		res.json({ message: "Password updated successfully" });
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ message: "Failed to update password" });
 	}
 }
