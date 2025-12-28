@@ -5,7 +5,9 @@ import jwt from "jsonwebtoken";
 import productRouter from "./routes/productRouter.js";
 import cors from "cors";
 import dotenv from "dotenv";
-import chatRouter from "./routes/chatRouter.js";
+import chatRouter from "./routes/chatRouter.js"
+import adminRouter from "./routes/adminRouter.js";
+
 
 dotenv.config();
 
@@ -57,8 +59,11 @@ mongoose.connect(connectionString).then(
 
 app.use("/api/users",userRouter)
 app.use("/api/products", productRouter)
+app.use(express.json());
+app.use(cors());
 app.use("/api/chat", chatRouter);
 
+app.use("/api/admin", adminRouter);
 
 
 app.listen(5000, 
