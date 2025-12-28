@@ -5,25 +5,29 @@ import Chat from "../models/chatModel.js";
 // ---------------------------------------------
 export const sendMessage = async (req, res) => {
   try {
-    const { customerName, userId, message } = req.body;
+    const { customerName, guestId, message } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ message: "Message required" });
+    if (!guestId || !message) {
+      return res.status(400).json({ message: "guestId and message required" });
     }
 
     const chat = await Chat.create({
       customerName: customerName || "Guest",
-      userId: userId || "guest_" + Date.now(),
+      guestId,
       sender: "customer",
       message,
     });
 
     res.status(201).json(chat);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to send" });
+    console.error("SEND MESSAGE ERROR:", err);
+    res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
   }
 };
+
 
 
 

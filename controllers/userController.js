@@ -66,6 +66,7 @@ export function loginUser(req, res) {
 			if (isPasswordMatching) {
 				const token = jwt.sign(
 					{
+						id: user._id,
 						email: user.email,
 						firstName: user.firstName,
 						lastName: user.lastName,
@@ -118,8 +119,7 @@ export function isCustomer(req) {
 	return true;
 }
 
-export function getUser(req, res) {
-	
+export function getUser(req, res) {	
 	if (req.user == null) {
 		res.status(401).json({
 			message: "Unauthorized",
@@ -129,6 +129,8 @@ export function getUser(req, res) {
 		res.json(req.user);
 	}
 }
+
+
 
 export async function googleLogin(req, res) {
 	const token = req.body.token;
