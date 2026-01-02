@@ -17,4 +17,3 @@ productRouter.delete("/:productID", authMiddleware, deleteProduct);
 
 
 export default productRouter;
-a
