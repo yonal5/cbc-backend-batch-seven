@@ -152,16 +152,17 @@ export const listCustomers = async (req, res) => {
 export const adminGetMessages = async (req, res) => {
   try {
     const { guestId } = req.query;
-    if (!guestId) return res.status(400).json({ error: "guestId missing" });
 
-    // Mark customer messages as read
-    await Chat.updateMany({ guestId, sender: "customer", isRead: false }, { isRead: true });
+    // mark customer messages as read
+    await Chat.updateMany(
+      { guestId, sender: "customer", isRead: false },
+      { isRead: true }
+    );
 
     const messages = await Chat.find({ guestId }).sort({ createdAt: 1 });
-    res.json(messages);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Load messages failed" });
+    res.json(messages); // must include imageUrl
+  } catch {
+    res.status(500).json([]);
   }
 };
 
