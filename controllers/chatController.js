@@ -1,142 +1,245 @@
+
 import Chat from "../models/chatModel.js";
 
-// ---------------------------------------------
-// CUSTOMER SENDS MESSAGE
-// ---------------------------------------------
-export const sendMessage = async (req, res) => {
+
+export const deleteMessage = async (req, res) => {
   try {
-    const { customerName, guestId, message } = req.body;
-
-    if (!guestId || !message) {
-      return res.status(400).json({ message: "guestId and message required" });
-    }
-
-    const chat = await Chat.create({
-      customerName: customerName || "Guest",
-      guestId,
-      sender: "customer",
-      message,
-    });
-
-    res.status(201).json(chat);
-  } catch (err) {
-    console.error("SEND MESSAGE ERROR:", err);
-    res.status(500).json({
-      message: "Internal server error",
-      error: err.message,
-    });
+    await Chat.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Delete failed" });
   }
 };
 
-
-
-
-// ---------------------------------------------
-// CUSTOMER GETS ONLY THEIR MESSAGES
-// ---------------------------------------------
-export const getMessages = async (req, res) => {
-  try {
-    const { guestId } = req.query;
-
-    const messages = await Chat.find({ guestId }).sort({ createdAt: 1 });
-
-    res.json(
-      messages.map((m) => ({
-        _id: m._id,
-        userId: m.guestId,
-        customerName: m.customerName,
-        sender: m.sender,
-        message: m.message,
-        time: m.createdAt,
-      }))
-    );
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ---------------------------------------------
-// ADMIN GETS ALL MESSAGES
-// ---------------------------------------------
-export const adminGetAllMessages = async (req, res) => {
-  try {
-    const messages = await Chat.find().sort({ createdAt: 1 });
-
-    res.json(
-      messages.map((m) => ({
-        _id: m._id,
-        userId: m.guestId,
-        customerName: m.customerName,
-        sender: m.sender,
-        message: m.message,
-        time: m.createdAt,
-      }))
-    );
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ---------------------------------------------
-// ADMIN SEND MESSAGE TO SPECIFIC CUSTOMER
-// ---------------------------------------------
-export const adminSend = async (req, res) => {
-  try {
-    const { guestId, message } = req.body;
-
-    if (!guestId || !message)
-      return res.status(400).json({ message: "Missing required fields" });
-
-    // find customer name
-    const customerChat = await Chat.findOne({ guestId });
-    const customerName = customerChat?.customerName || "Unknown User";
-
-    const chat = await Chat.create({
-      customerName,
-      guestId,
-      sender: "admin",
-      message,
-    });
-
-    res.status(201).json({
-      _id: chat._id,
-      userId: chat.guestId,
-      customerName: chat.customerName,
-      sender: chat.sender,
-      message: chat.message,
-      time: chat.createdAt,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ---------------------------------------------
-// ADMIN LIST OF UNIQUE CUSTOMERS
-// ---------------------------------------------
-export const listCustomers = async (req, res) => {
+export const getCustomersForAdmin = async (req, res) => {
   try {
     const customers = await Chat.aggregate([
       {
         $group: {
           _id: "$guestId",
           customerName: { $first: "$customerName" },
-          lastMessage: { $last: "$message" },
-          lastTime: { $last: "$createdAt" },
         },
       },
-      { $sort: { lastTime: -1 } },
+      {
+        $lookup: {
+          from: "chats",
+          let: { guestId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$guestId", "$$guestId"] },
+                    { $eq: ["$sender", "customer"] },
+                    { $eq: ["$isRead", false] },
+                  ],
+                },
+              },
+            },
+            { $count: "count" },
+          ],
+          as: "unread",
+        },
+      },
+      {
+        $addFields: {
+          unreadCount: {
+            $ifNull: [{ $arrayElemAt: ["$unread.count", 0] }, 0],
+          },
+        },
+      },
+      {
+        $project: {
+          userId: "$_id",
+          customerName: 1,
+          unreadCount: 1,
+        },
+      },
     ]);
 
-    res.json(
-      customers.map((c) => ({
-        userId: c._id,
-        customerName: c.customerName || "Unknown User",
-        lastMessage: c.lastMessage,
-        lastTime: c.lastTime,
-      }))
-    );
+    res.json(customers);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Failed to load customers" });
   }
+};
+export const getAdminMessages = async (req, res) => {
+  const { guestId } = req.query;
+
+  try {
+
+    await Chat.updateMany(
+      { guestId, sender: "customer", isRead: false },
+      { isRead: true }
+    );
+
+    const messages = await Chat.find({ guestId }).sort({ createdAt: 1 });
+
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to load messages" });
+  }
+};
+
+export const sendMessage = async (req, res) => {
+
+try {
+
+const {
+  guestId,
+  customerName,
+  message,
+  imageUrl,
+  type
+} = req.body;
+
+const msg = await Chat.create({
+  guestId,
+  customerName,
+  sender: "customer",
+  message,
+  imageUrl,
+  type,
+  isRead: false,
+});
+
+res.json(msg);
+
+} catch (err) {
+
+console.error(err);
+res.status(500).json({ error: "Send failed" });
+
+}
+
+};
+
+export const getMessages = async (req, res) => {
+
+try {
+
+const { guestId } = req.query;
+
+const messages = await Chat.find({ guestId })
+  .sort({ createdAt: 1 });
+
+res.json(messages);
+
+} catch {
+
+res.status(500).json({ error: "Load failed" });
+
+}
+
+};
+
+
+
+/* ================= ADMIN: LIST USERS ================= */
+export const listCustomers = async (req, res) => {
+
+try {
+
+const customers = await Chat.aggregate([
+
+  {
+    $group: {
+      _id: "$guestId",
+      customerName: { $first: "$customerName" },
+
+      unreadCount: {
+        $sum: {
+          $cond: [
+            {
+              $and: [
+                { $eq: ["$sender", "customer"] },
+                { $eq: ["$isRead", false] }
+              ]
+            },
+            1,
+            0
+          ]
+        }
+      }
+
+    }
+  }
+
+]);
+
+res.json(
+
+  customers.map(c => ({
+    userId: c._id,
+    customerName: c.customerName || c._id,
+    unreadCount: c.unreadCount
+  }))
+
+);
+
+} catch {
+
+res.status(500).json([]);
+
+}
+
+};
+export const adminGetMessages = async (req, res) => {
+
+try {
+
+const { guestId } = req.query;
+
+await Chat.updateMany(
+  {
+    guestId,
+    sender: "customer",
+    isRead: false
+  },
+  {
+    isRead: true
+  }
+);
+
+const messages = await Chat.find({ guestId })
+  .sort({ createdAt: 1 });
+
+res.json(messages);
+
+} catch {
+
+res.status(500).json([]);
+
+}
+
+};
+
+export const adminSend = async (req, res) => {
+
+try {
+
+const {
+  guestId,
+  message,
+  imageUrl,
+  type
+} = req.body;
+
+const msg = await Chat.create({
+  guestId,
+  sender: "admin",
+  message,
+  imageUrl,
+  type,
+  isRead: true
+});
+
+res.json(msg);
+
+} catch {
+
+res.status(500).json({ error: "Admin send failed" });
+
+}
+
 };
