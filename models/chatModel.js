@@ -1,33 +1,16 @@
 import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema(
-{
-  guestId: String,
-  customerName: String,
-
-  sender: {
-    type: String,
-    enum: ["customer", "admin"],
-    required: true,
+  {
+    guestId: { type: String, required: true },
+    customerName: { type: String, required: true },
+    sender: { type: String, enum: ["customer", "admin"], required: true },
+    type: { type: String, enum: ["text", "image"], default: "text" },
+    message: { type: String },
+    imageUrl: { type: String },
+    isRead: { type: Boolean, default: false },
   },
-
-  type: {
-    type: String,
-    enum: ["text", "image"],
-    default: "text",
-  },
-
-  message: String,
-
-  imageUrl: String,
-
-  isRead: {
-    type: Boolean,
-    default: false,
-  }
-
-},
-{ timestamps: true }
+  { timestamps: true }
 );
 
 export default mongoose.model("Chat", chatSchema);
