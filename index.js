@@ -20,25 +20,30 @@ app.use(cors());
 app.use(express.json());
 
 // JWT AUTH MIDDLEWARE
-app.use((req, res, next) => {
-  const header = req.header("Authorization");
+app.use(
+    (req,res,next)=>{
 
-  if (!header) {
-    req.user = null;
-    return next();
-  }
+        let token = req.header("Authorization")
 
-  const token = header.replace("Bearer ", "");
+        if(token != null){
+            token = token.replace("Bearer ","")
+            jwt.verify(token, process.env.JWT_SECRET,
+                (err, decoded)=>{
+                    if(decoded == null){
+                        res.json({
+                            message: "Invalid token please login again"
+                        })
+                        return
+                    }else{
+                        req.user = decoded
+                    }
+                }
+            )
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      req.user = null;
-    } else {
-      req.user = decoded;
+        }
+        next()
     }
-    next();
-  });
-});
+)
 
 // Database connection
 mongoose.connect(process.env.MONGO_URI, {
