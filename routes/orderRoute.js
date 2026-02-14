@@ -5,12 +5,11 @@ import {
   updateOrderStatus,
 } from "../controllers/orderController.js";
 
-import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", authMiddleware, createOrder);
-router.get("/", authMiddleware, getOrders);
-router.put("/:orderID", authMiddleware, updateOrderStatus);
+router.post("/", createOrder);
+router.get("/", getOrders);
+router.put("/:orderID", updateOrderStatus);
 
 export default router;
