@@ -16,7 +16,7 @@ export const createOrder = async (req, res) => {
 
     // Generate order ID
     const lastOrder = await Order.findOne().sort({ createdAt: -1 });
-    let orderID = "CBC0000001";
+    let orderID = "ORD0000001";
     if (lastOrder) {
       const lastNumber = parseInt(lastOrder.orderID.replace("CBC", ""));
       orderID = "CBC" + (lastNumber + 1).toString().padStart(7, "0");
