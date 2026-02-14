@@ -7,7 +7,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import chatRouter from "./routes/chatRouter.js"
 import adminRouter from "./routes/adminRouter.js";
-import orderRoute from "./src/routes/orderRoute.js";
+import orderRoute from "./routes/orderRoute.js";
 
 dotenv.config();
 
