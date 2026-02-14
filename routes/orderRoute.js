@@ -5,17 +5,16 @@ import {
   updateOrderStatus,
 } from "../controllers/orderController.js";
 
-import authMiddleware from "../middleware/auth.js";
 
 const router = express.Router();
 
 /* CREATE ORDER */
-router.post("/", authMiddleware, createOrder);
+router.post("/", createOrder);
 
 /* GET ORDERS */
-router.get("/", authMiddleware, getOrders);
+router.get("/", getOrders);
 
 /* UPDATE ORDER STATUS */
-router.put("/:orderID", authMiddleware, updateOrderStatus);
+router.put("/:orderID", updateOrderStatus);
 
 export default router;
