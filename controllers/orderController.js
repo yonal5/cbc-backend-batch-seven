@@ -228,34 +228,3 @@ export async function createOrder(req, res) {
 }
 
 
-
-export async function updateOrderStatus(req, res) {
-
-    try {
-
-        if (!isAdmin(req))
-            return res.status(403).json({
-                message: "Admin only"
-            });
-
-
-        await Order.updateOne(
-            { orderID: req.params.orderID },
-            { status: req.body.status }
-        );
-
-
-        res.json({
-            message: "Status updated"
-        });
-
-    }
-    catch (err) {
-
-        res.status(500).json({
-            message: "Server error"
-        });
-
-    }
-
-}
