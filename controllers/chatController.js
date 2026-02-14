@@ -1,132 +1,186 @@
-import Order from "../models/order.js";
-import Product from "../models/product.js";
 
-/* =========================
-   CREATE ORDER
-========================= */
-export const createOrder = async (req, res) => {
+import Chat from "../models/chatModel.js";
+
+
+export const deleteMessage = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Login required" });
-    }
-
-    const { address, phone, items } = req.body;
-
-    if (!address) {
-      return res.status(400).json({ message: "Address required" });
-    }
-
-    if (!items || items.length === 0) {
-      return res.status(400).json({ message: "Cart empty" });
-    }
-
-    // Generate order ID
-    const lastOrder = await Order.findOne().sort({ createdAt: -1 });
-
-    let orderID = "CBC0000001";
-
-    if (lastOrder) {
-      const lastNumber = parseInt(lastOrder.orderID.replace("CBC", ""));
-      orderID = "CBC" + (lastNumber + 1).toString().padStart(7, "0");
-    }
-
-    let total = 0;
-    const orderItems = [];
-
-    for (const item of items) {
-      const product = await Product.findOne({
-        productID: item.productID,
-      });
-
-      if (!product) {
-        return res.status(400).json({
-          message: "Product not found: " + item.productID,
-        });
-      }
-
-      if (product.stock < item.quantity) {
-        return res.status(400).json({
-          message: product.name + " out of stock",
-        });
-      }
-
-      product.stock -= item.quantity;
-      await product.save();
-
-      orderItems.push({
-        productID: product.productID,
-        quantity: item.quantity,
-        name: product.name,
-        price: product.price,
-        image: product.images?.[0] || "",
-      });
-
-      total += product.price * item.quantity;
-    }
-
-    const order = await Order.create({
-      orderID,
-      items: orderItems,
-      customerName: req.user.firstName + " " + req.user.lastName,
-      email: req.user.email,
-      phone,
-      address,
-      total,
-    });
-
-    res.status(201).json({
-      message: "Order created successfully",
-      order,
-    });
+    await Chat.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ error: "Delete failed" });
   }
 };
 
-/* =========================
-   GET ORDERS
-========================= */
-export const getOrders = async (req, res) => {
+export const getCustomersForAdmin = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Login required" });
-    }
+    const customers = await Chat.aggregate([
+      {
+        $group: {
+          _id: "$guestId",
+          customerName: { $first: "$customerName" },
+        },
+      },
+      {
+        $lookup: {
+          from: "chats",
+          let: { guestId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$guestId", "$$guestId"] },
+                    { $eq: ["$sender", "customer"] },
+                    { $eq: ["$isRead", false] },
+                  ],
+                },
+              },
+            },
+            { $count: "count" },
+          ],
+          as: "unread",
+        },
+      },
+      {
+        $addFields: {
+          unreadCount: {
+            $ifNull: [{ $arrayElemAt: ["$unread.count", 0] }, 0],
+          },
+        },
+      },
+      {
+        $project: {
+          userId: "$_id",
+          customerName: 1,
+          unreadCount: 1,
+        },
+      },
+    ]);
 
-    // Admin → get all
-    if (req.user.role === "admin") {
-      const orders = await Order.find().sort({ createdAt: -1 });
-      return res.json(orders);
-    }
-
-    // Customer → own orders
-    const orders = await Order.find({
-      email: req.user.email,
-    }).sort({ createdAt: -1 });
-
-    res.json(orders);
+    res.json(customers);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Failed to load customers" });
   }
 };
+export const getAdminMessages = async (req, res) => {
+  const { guestId } = req.query;
 
-/* =========================
-   UPDATE ORDER STATUS
-========================= */
-export const updateOrderStatus = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
-    }
 
-    await Order.updateOne(
-      { orderID: req.params.orderID },
-      { status: req.body.status }
+    await Chat.updateMany(
+      { guestId, sender: "customer", isRead: false },
+      { isRead: true }
     );
 
-    res.json({ message: "Status updated" });
+    const messages = await Chat.find({ guestId }).sort({ createdAt: 1 });
+
+    res.json(messages);
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Failed to load messages" });
+  }
+};
+
+export const sendMessage = async (req, res) => {
+  try {
+    const { guestId, customerName, message, imageUrl, type } = req.body;
+    const msg = await Chat.create({
+      guestId,
+      customerName,
+      sender: "customer",
+      message,
+      imageUrl,
+      type,
+      isRead: false,
+    });
+    res.status(201).json(msg);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Send failed" });
+  }
+};
+
+
+export const getMessages = async (req, res) => {
+  try {
+    const { guestId } = req.query;
+    if (!guestId) return res.status(400).json({ error: "guestId missing" });
+
+    const messages = await Chat.find({ guestId }).sort({ createdAt: 1 });
+    res.json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Load failed" });
+  }
+};
+
+export const listCustomers = async (req, res) => {
+  try {
+    const customers = await Chat.aggregate([
+      {
+        $group: {
+          _id: "$guestId",
+          customerName: { $first: "$customerName" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$sender", "customer"] }, { $eq: ["$isRead", false] }] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    res.json(
+      customers.map((c) => ({
+        userId: c._id,
+        customerName: c.customerName || c._id,
+        unreadCount: c.unreadCount,
+      }))
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load customers" });
+  }
+};
+
+
+export const adminGetMessages = async (req, res) => {
+  try {
+    const { guestId } = req.query;
+
+    // mark customer messages as read
+    await Chat.updateMany(
+      { guestId, sender: "customer", isRead: false },
+      { isRead: true }
+    );
+
+    const messages = await Chat.find({ guestId }).sort({ createdAt: 1 });
+    res.json(messages); // must include imageUrl
+  } catch {
+    res.status(500).json([]);
+  }
+};
+
+export const adminSend = async (req, res) => {
+  try {
+    const { guestId, message, imageUrl, type, customerName } = req.body;
+    const msg = await Chat.create({
+      guestId,
+      customerName: customerName || "Admin",
+      sender: "admin",
+      message,
+      imageUrl,
+      type,
+      isRead: true,
+    });
+    res.json(msg);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Admin send failed" });
   }
 };
