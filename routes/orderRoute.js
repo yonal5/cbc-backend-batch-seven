@@ -1,1 +1,18 @@
-import authMiddleware from "../middleware/authMiddleware.js";
+import express from "express";
+
+import {
+    createOrder,
+    getOrders,
+    updateOrderStatus
+}
+from "../controllers/orderController.js";
+
+const router = express.Router();
+
+router.post("/", createOrder);
+
+router.get("/", getOrders);
+
+router.put("/status/:orderID", updateOrderStatus);
+
+export default router;
