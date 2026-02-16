@@ -1,14 +1,15 @@
 import express from "express";
 import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
+
 import userRouter from "./routes/userRouter.js";
 import productRouter from "./routes/productRouter.js";
 import chatRouter from "./routes/chatRouter.js";
 import adminRouter from "./routes/adminRouter.js";
 import orderRoute from "./routes/orderRoute.js";
 
-import jwt from "jsonwebtoken";
-import cors from "cors";
-import dotenv from "dotenv";
 import User from "./models/user.js";
 
 dotenv.config();
@@ -27,54 +28,45 @@ app.use(express.json());
 ====================== */
 
 app.use(async (req, res, next) => {
-    try {
+  try {
 
-        const authHeader = req.header("Authorization");
+    const authHeader = req.header("Authorization");
 
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return next();
-        }
-
-        const token = authHeader.replace("Bearer ", "");
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        if (!decoded) {
-            return next();
-        }
-
-        // IMPORTANT: Load FULL user from database
-        const user = await User.findById(decoded.id).select("-password");
-
-        if (!user) {
-            return next();
-        }
-
-        req.user = user;
-
-        next();
-
-    } catch (err) {
-
-        console.log("Auth error:", err.message);
-        next();
-
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return next();
     }
-});
 
+    const token = authHeader.replace("Bearer ", "");
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decoded?.id) {
+      return next();
+    }
+
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return next();
+    }
+
+    req.user = user;
+
+    next();
+
+  } catch (err) {
+    console.log("Auth error:", err.message);
+    next();
+  }
+});
 
 /* ======================
    DATABASE
 ====================== */
 
 mongoose.connect(process.env.MONGO_URI)
-.then(() => {
-    console.log("Database connected successfully");
-})
-.catch((err) => {
-    console.log("Database connection failed:", err.message);
-});
-
+.then(() => console.log("Database connected"))
+.catch(err => console.log("Database error:", err.message));
 
 /* ======================
    ROUTES
@@ -88,15 +80,13 @@ app.use("/api/admin", adminRouter);
 
 app.use("/uploads", express.static("uploads"));
 
-
 /* ======================
-   TEST ROUTE
+   TEST
 ====================== */
 
 app.get("/", (req, res) => {
-    res.send("API is running...");
+  res.send("API running");
 });
-
 
 /* ======================
    SERVER
@@ -105,5 +95,5 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log("Server running on port", PORT);
 });
