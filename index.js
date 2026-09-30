@@ -10,6 +10,7 @@ import productRouter from "./routes/productRouter.js";
 import chatRouter from "./routes/chatRouter.js";
 import adminRouter from "./routes/adminRouter.js";
 import orderRoute from "./routes/orderRoute.js";
+import notificationRouter from "./routes/notificationRouter.js";
 
 import User from "./models/user.js";
 
@@ -128,6 +129,11 @@ app.use(
 app.use(
     "/api/admin",
     adminRouter
+);
+
+app.use(
+    "/api/notifications",
+    notificationRouter
 );
 
 
