@@ -1,5 +1,6 @@
 
 import Chat from "../models/chatModel.js";
+import { notifyAdmins } from "../services/pushService.js";
 
 
 export const deleteMessage = async (req, res) => {
@@ -95,6 +96,10 @@ export const sendMessage = async (req, res) => {
       isRead: false,
     });
     res.status(201).json(msg);
+
+    notifyAdmins({ customerName, message }).catch((err) => {
+      console.error("Customer push notification failed:", err);
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Send failed" });
