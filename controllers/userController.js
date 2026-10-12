@@ -52,7 +52,7 @@ export async function createUser(req, res) {
             role: "user",
             isBlock: false,
             isEmailVerified: false,
-            image: "/user.png",
+            image: "/placeholder-avatar.png",
         });
 
         await user.save();
@@ -228,7 +228,7 @@ export async function googleLogin(req, res) {
                 isBlock: false,
                 isEmailVerified:
                     googleUser.email_verified || false,
-                image: googleUser.picture || "/user.png",
+                image: googleUser.picture || "/placeholder-avatar.png",
             });
 
             await user.save();
