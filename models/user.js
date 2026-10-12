@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
 	role: { type: String, default: "user" },
 	isBlock: { type: Boolean, default: false },
 	isEmailVerified: { type: Boolean, default: false },
-	image: { type: String, default: "/user.png" }
+	image: { type: String, default: "/placeholder-avatar.png" }
 });
 
 const User = mongoose.model("User", userSchema);
